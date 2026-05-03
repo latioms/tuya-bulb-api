@@ -1,11 +1,12 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { PRESETS } from "./_presets";
+import { withAuth } from "./_auth";
 
-/** GET /api — health check and route map. Does not require authentication. */
-export default function handler(_req: VercelRequest, res: VercelResponse) {
-  res.status(200).json({
+/** GET /api — health check and route map. */
+export default withAuth(function handler(_req: VercelRequest, res: VercelResponse) {
+  return Promise.resolve(res.status(200).json({
     status: "online",
-    auth:   "All routes require the `x-api-key` header (except this one).",
+    auth:   "All routes require the `x-api-key` header.",
     routes: {
       "GET  /api/status":      "Returns all device DP codes and their current values",
       "POST /api/power":       "{ on: boolean } — turn the bulb on or off",
@@ -15,5 +16,5 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
       "POST /api/flash":       "{ color, times?, seconds?, duration? } — flash then restore",
     },
     presets: Object.keys(PRESETS),
-  });
-}
+  }));
+});
