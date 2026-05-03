@@ -18,11 +18,18 @@
 
 const https = require("https");
 const crypto = require("crypto");
+require("dotenv").config({ path: require("path").resolve(__dirname, "..", ".env.local") });
 
-const CLIENT_ID  = "5aud8fs7s8nv3h58hrug";
-const SECRET_KEY = "30ec9c2c06544caf97e34c6bdb0da42c";
-const DEVICE_ID  = "bfafb74f941dd42806rbkh";
-const BASE_URL   = "openapi.tuyaeu.com";
+const CLIENT_ID  = process.env.TUYA_ACCESS_KEY;
+const SECRET_KEY = process.env.TUYA_SECRET_KEY;
+const DEVICE_ID  = process.env.TUYA_DEVICE_ID;
+const BASE_URL   = process.env.TUYA_BASE_URL?.replace("https://", "").replace("http://", "") || "openapi.tuyaeu.com";
+
+if (!CLIENT_ID || !SECRET_KEY || !DEVICE_ID) {
+  console.error("Error: Missing required env vars (TUYA_ACCESS_KEY, TUYA_SECRET_KEY, TUYA_DEVICE_ID)");
+  console.error("Make sure .env.local is present with Tuya credentials");
+  process.exit(1);
+}
 
 const PRESETS = {
   red:    { h: 0,   s: 1000, v: 1000 },

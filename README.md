@@ -5,7 +5,6 @@ Built with TypeScript + Vercel Serverless Functions, using a hand-rolled Tuya HM
 
 ---
 
-
 ## Table of contents
 
 - [Setup](#setup)
