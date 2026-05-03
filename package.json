@@ -1,10 +1,12 @@
 {
-  "name": "coolproject",
+  "name": "bulb-api",
   "version": "1.0.0",
-  "description": "",
+  "description": "Tuya smart bulb control API + webhooks",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vercel dev",
+    "deploy": "vercel --prod",
+    "bulb": "node scripts/bulb.js"
   },
   "keywords": [],
   "author": "",
