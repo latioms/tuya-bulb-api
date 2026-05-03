@@ -1,5 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { sendCommands } from "./_tuya";
+import { parseBody } from "./_body";
+
+export const config = { api: { bodyParser: false } };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -7,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   let body: { h?: unknown; s?: unknown; v?: unknown };
   try {
-    body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    body = await parseBody<{ h?: unknown; s?: unknown; v?: unknown }>(req);
   } catch {
     return res.status(400).json({ error: "Invalid JSON body" });
   }
@@ -31,3 +34,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: String(err) });
   }
 }
+
