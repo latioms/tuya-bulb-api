@@ -112,10 +112,10 @@ All error responses have the shape `{ "error": "..." }`.
 
 ### GET /api
 
-Health check. Returns the route map and available presets. **No auth required.**
+Health check. Returns the route map and available presets.
 
 ```bash
-curl http://localhost:3000/api
+curl -H "x-api-key: $API_KEY" http://localhost:3000/api
 ```
 
 ---
