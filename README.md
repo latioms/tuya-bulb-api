@@ -47,6 +47,7 @@ cp .env.example .env.local
 | `TUYA_DEVICE_ID`  | Device ID of the bulb to control                                |
 | `TUYA_BASE_URL`   | Regional API base URL (see below)                               |
 | `API_KEY`         | Your internal API key — required on every request               |
+| `GITHUB_WEBHOOK_SECRET` | Secret shared with GitHub to verify webhook payloads     |
 
 **Regional base URLs:**
 
@@ -84,6 +85,7 @@ npx vercel env add TUYA_SECRET_KEY
 npx vercel env add TUYA_DEVICE_ID
 npx vercel env add TUYA_BASE_URL
 npx vercel env add API_KEY
+npx vercel env add GITHUB_WEBHOOK_SECRET
 
 # Deploy to production
 npm run deploy
