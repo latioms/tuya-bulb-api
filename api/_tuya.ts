@@ -1,8 +1,14 @@
 import * as crypto from "crypto";
 import axios from "axios";
+import type { TuyaStatusItem } from "./_types";
 
+// ---------------------------------------------------------------------------
+// Token cache — reused across requests within the same serverless instance.
+// On cold starts the token is re-fetched automatically.
+// ---------------------------------------------------------------------------
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
+/** Reads Tuya credentials from env vars at call time (never at module load). */
 function cfg() {
   return {
     clientId : process.env.TUYA_ACCESS_KEY ?? "",
@@ -12,6 +18,12 @@ function cfg() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Tuya HMAC-SHA256 signing — implemented manually because the official SDK
+// (@tuya/tuya-connector-nodejs) produces "sign invalid" (1004) errors.
+// Reference: https://developer.tuya.com/en/docs/cloud/signingalgorithm
+// ---------------------------------------------------------------------------
+
 function sha256hex(str: string): string {
   return crypto.createHash("sha256").update(str).digest("hex");
 }
@@ -20,6 +32,10 @@ function hmacSHA256(str: string, secret: string): string {
   return crypto.createHmac("sha256", secret).update(str).digest("hex").toUpperCase();
 }
 
+/**
+ * Builds the Tuya HMAC-SHA256 signature string.
+ * For token requests `accessToken` is an empty string.
+ */
 function buildSign(
   method: string,
   path: string,
@@ -35,6 +51,7 @@ function buildSign(
   return hmacSHA256(strToHmac, secretKey);
 }
 
+/** Fetches a fresh access token or returns the cached one if still valid. */
 async function getAccessToken(): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expiresAt) {
     return cachedToken.token;
@@ -58,6 +75,7 @@ async function getAccessToken(): Promise<string> {
   return access_token;
 }
 
+/** Internal helper — signs and fires any Tuya OpenAPI request. */
 async function tuyaRequest<T>(method: "GET" | "POST", path: string, body?: object): Promise<T> {
   const { clientId, secretKey, baseUrl } = cfg();
   const accessToken = await getAccessToken();
@@ -72,8 +90,8 @@ async function tuyaRequest<T>(method: "GET" | "POST", path: string, body?: objec
     t,
     sign_method: "HMAC-SHA256",
     nonce: "",
+    ...(body ? { "Content-Type": "application/json" } : {}),
   };
-  if (body) headers["Content-Type"] = "application/json";
 
   const res = await axios.request({ method, url: `${baseUrl}${path}`, headers, data: body });
 
@@ -84,11 +102,26 @@ async function tuyaRequest<T>(method: "GET" | "POST", path: string, body?: objec
   return res.data.result as T;
 }
 
-export async function getDeviceStatus(): Promise<unknown> {
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the full status of the configured device as an array of
+ * `{ code, value }` entries (e.g. switch_led, work_mode, bright_value_v2…).
+ */
+export async function getDeviceStatus(): Promise<TuyaStatusItem[]> {
   const { deviceId } = cfg();
-  return tuyaRequest("GET", `/v1.0/devices/${deviceId}/status`);
+  return tuyaRequest<TuyaStatusItem[]>("GET", `/v1.0/devices/${deviceId}/status`);
 }
 
+/**
+ * Sends one or more commands to the configured device.
+ * Each command is a `{ code, value }` pair matching a Tuya DP code.
+ *
+ * @example
+ * await sendCommands([{ code: "switch_led", value: false }]);
+ */
 export async function sendCommands(
   commands: Array<{ code: string; value: unknown }>
 ): Promise<unknown> {

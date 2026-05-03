@@ -1,17 +1,15 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getDeviceStatus } from "./_tuya";
+import { withAuth } from "./_auth";
+import { Errors } from "./_errors";
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+/** GET /api/status — returns all DP codes and their current values. */
+export default withAuth(async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "GET") return Errors.methodNotAllowed(res);
   try {
     const status = await getDeviceStatus();
     return res.status(200).json(status);
   } catch (err) {
-    return res.status(500).json({ error: String(err) });
+    return Errors.serverError(res, err);
   }
-}
+});

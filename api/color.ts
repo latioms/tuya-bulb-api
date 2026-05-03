@@ -1,37 +1,44 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { sendCommands } from "./_tuya";
+import { resolveColor, PRESETS } from "./_presets";
 import { parseBody } from "./_body";
+import { withAuth } from "./_auth";
+import { Errors } from "./_errors";
 
 export const config = { api: { bodyParser: false } };
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-  let body: { h?: unknown; s?: unknown; v?: unknown };
+/**
+ * POST /api/color — switches the bulb to colour mode and sets the colour.
+ *
+ * Body (one of):
+ * - `{ "color": "red" }` — use a named preset
+ * - `{ "h": 240, "s": 1000, "v": 1000 }` — raw HSV (h: 0–360, s/v: 0–1000)
+ */
+export default withAuth(async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") return Errors.methodNotAllowed(res);
+
+  let body: Record<string, unknown>;
   try {
-    body = await parseBody<{ h?: unknown; s?: unknown; v?: unknown }>(req);
+    body = await parseBody<Record<string, unknown>>(req);
   } catch {
-    return res.status(400).json({ error: "Invalid JSON body" });
+    return Errors.badRequest(res, "Invalid JSON body");
   }
-  const h = Number(body?.h);
-  const s = Number(body?.s);
-  const v = Number(body?.v);
-  if (
-    !Number.isFinite(h) || h < 0 || h > 360 ||
-    !Number.isFinite(s) || s < 0 || s > 1000 ||
-    !Number.isFinite(v) || v < 0 || v > 1000
-  ) {
-    return res.status(400).json({ error: "h: 0–360, s: 0–1000, v: 0–1000" });
+
+  const color = resolveColor(body.color ?? body);
+  if (!color) {
+    return Errors.badRequest(res, "Provide `color` as a preset name or `{ h, s, v }` object", {
+      presets: Object.keys(PRESETS),
+    });
   }
+
   try {
     const result = await sendCommands([
-      { code: "work_mode", value: "colour" },
-      { code: "colour_data_v2", value: { h, s, v } },
+      { code: "work_mode",      value: "colour" },
+      { code: "colour_data_v2", value: color },
     ]);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(500).json({ error: String(err) });
+    return Errors.serverError(res, err);
   }
-}
+});
 
